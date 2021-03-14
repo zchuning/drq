@@ -16,11 +16,19 @@ import utils
 from logger import Logger
 from replay_buffer import ReplayBuffer
 from video import VideoRecorder
+from wrappers import MetaWorld, TimeLimit
 
 torch.backends.cudnn.benchmark = True
 
 
 def make_env(cfg):
+    if 'mw_sawyer' in cfg.env:
+        suite, task = cfg.env.split('_', 1)
+        env = MetaWorld(task, cfg.action_repeat, cfg.rand_init_goal, cfg.rand_init_hand, cfg.rand_init_obj, width=cfg.image_size)
+        env = TimeLimit(env, cfg.time_limit / cfg.action_repeat)
+        env = utils.FrameStackMetaWorld(env, k=cfg.frame_stack)
+        return env
+
     """Helper function to create dm_control environment"""
     if cfg.env == 'ball_in_cup_catch':
         domain_name = 'ball_in_cup'

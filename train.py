@@ -98,6 +98,7 @@ class Workspace(object):
 
     def evaluate(self):
         average_episode_reward = 0
+        average_episode_success = 0
         for episode in range(self.cfg.num_eval_episodes):
             obs = self.env.reset()
             self.video_recorder.init(enabled=(episode == 0))
@@ -113,9 +114,13 @@ class Workspace(object):
                 episode_step += 1
 
             average_episode_reward += episode_reward
+            average_episode_success += float(episode_reward > 0)
             self.video_recorder.save(f'{self.step}.mp4')
         average_episode_reward /= self.cfg.num_eval_episodes
+        average_episode_success /= self.cfg.num_eval_episodes
         self.logger.log('eval/episode_reward', average_episode_reward,
+                        self.step)
+        self.logger.log('eval/episode_success', average_episode_success,
                         self.step)
         self.logger.dump(self.step)
 
@@ -137,6 +142,8 @@ class Workspace(object):
                     self.evaluate()
 
                 self.logger.log('train/episode_reward', episode_reward,
+                                self.step)
+                self.logger.log('train/episode_success', float(episode_reward > 0),
                                 self.step)
 
                 obs = self.env.reset()

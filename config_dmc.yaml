@@ -67,7 +67,7 @@ actor:
     log_std_bounds: [-10, 2]
 
 encoder:
-  class: drq.Encoder
+  class: drq.BetterEncoder
   params:
       obs_shape: ${agent.params.obs_shape}
       feature_dim: 50

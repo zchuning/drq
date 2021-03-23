@@ -101,6 +101,30 @@ class BetterEncoder(Encoder):
 
         self.outputs = dict()
 
+class Encoder64(Encoder):
+    """Convolutional encoder for image-based observations."""
+    def __init__(self, obs_shape, feature_dim):
+        super().__init__(obs_shape, feature_dim)
+
+        assert len(obs_shape) == 3
+        self.num_layers = 4
+        self.num_filters = [32, 64, 128, 256]
+        self.output_logits = False
+        self.feature_dim = feature_dim
+
+        self.convs = nn.ModuleList([
+            nn.Conv2d(obs_shape[0], self.num_filters[0], 3, stride=2, padding=1), # 32
+            nn.Conv2d(self.num_filters[0], self.num_filters[1], 3, stride=2, padding=1), # 16
+            nn.Conv2d(self.num_filters[1], self.num_filters[2], 3, stride=2, padding=1), # 8
+            nn.Conv2d(self.num_filters[2], self.num_filters[3], 3, stride=2, padding=1)  # 4
+        ])
+
+        self.head = nn.Sequential(
+            nn.Linear(self.num_filters[3] * 4 * 4, self.feature_dim),
+            nn.LayerNorm(self.feature_dim))
+
+        self.outputs = dict()
+
 
 
 class Actor(nn.Module):

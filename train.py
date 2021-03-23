@@ -9,6 +9,7 @@ import numpy as np
 
 import dmc2gym
 import hydra
+import pathlib
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -61,6 +62,13 @@ def make_env(cfg):
 
     return env
 
+def process_images(images):
+    # (n, 64, 64, 3)
+    images = np.concatenate((images[None, 0], images[None, 0], images), axis=0)
+    images = np.transpose(images, (0, 3, 1, 2))
+    stacked_images = np.concatenate((images[:-2], images[1:-1], images[2:]), axis=1)
+    return stacked_images
+
 
 class Workspace(object):
     def __init__(self, cfg):
@@ -95,6 +103,33 @@ class Workspace(object):
         self.video_recorder = VideoRecorder(
             self.work_dir if cfg.save_video else None)
         self.step = 0
+
+        if self.cfg.episode_dir:
+            self.load_episodes(cfg.episode_dir)
+
+    def load_episodes(self, directory):
+        directory = pathlib.Path(directory).expanduser()
+        print(f'Loading episodes from {directory}')
+        num_loaded_episodes = 0
+        for filename in directory.glob('*.npz'):
+            try:
+                with filename.open('rb') as f:
+                    episode = np.load(f)
+                    episode = {k: episode[k] for k in episode.keys()}
+            except Exception as e:
+                print(f'Could not load episode: {e}')
+                continue
+            images = process_images(episode['image'])
+            obses = images[:-1]
+            actions = episode['action'][:-1]
+            rewards = episode['sparse_reward'][:-1]
+            next_obses = images[1:]
+            dones = np.zeros(len(episode['action']))
+            dones_no_max = dones
+            [self.replay_buffer.add(*kwargs) for kwargs in
+                    zip(obses, actions, rewards, next_obses, dones, dones_no_max)]
+            num_loaded_episodes += 1
+        print(f'Loaded {num_loaded_episodes} episodes.')
 
     def evaluate(self):
         average_episode_reward = 0
